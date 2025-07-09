@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SongBird - Smart Songwriting Assistant</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #1e1e2f;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+    }
+    main {
+      padding: 2rem;
+      max-width: 960px;
+      margin: auto;
+    }
+    select, button, textarea, input[type=number] {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      width: 100%;
+    }
+    .chord-progression {
+      margin: 1rem 0;
+      padding: 1rem;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .suggestion-box {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SongBird</h1>
+    <p>Smart songwriting assistant with musical theory tools</p>
+  </header>
+  <main>
+    <label for="key">Choose Key:</label>
+    <select id="key">
+      <option>C</option><option>C#</option><option>D</option><option>Eb</option>
+      <option>E</option><option>F</option><option>F#</option><option>G</option>
+      <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+    </select>
+
+    <label for="genre">Choose Genre:</label>
+    <select id="genre">
+      <option>Pop</option><option>Rock</option><option>Country</option>
+      <option>Jazz - Bebop</option><option>Jazz - Ballad</option>
+      <option>Jazz - Hard Bop</option><option>Jazz - Gypsy</option>
+      <option>Jazz - Modal</option>
+    </select>
+
+    <button onclick="suggestNextChord()">Suggest Next Chord</button>
+
+    <div class="chord-progression">
+      <h3>Current Progression:</h3>
+      <p id="progression-display">(empty)</p>
+      <div class="suggestion-box" id="suggestion-box"></div>
+    </div>
+
+    <label for="customChord">Add/Modify Chord:</label>
+    <textarea id="customChord" placeholder="Enter custom chord(s), e.g. Am7 D7 Gmaj7"></textarea>
+    <button onclick="addCustomChords()">Update Progression</button>
+
+    <div style="margin-top: 1rem;">
+      <button onclick="addNewBar()">+ Add New Bar</button>
+      <button onclick="insertSection()">+ Add Section Label</button>
+      <button onclick="playProgression()">▶ Play Progression</button>
+    </div>
+
+    <div style="margin-top: 1rem;">
+      <label for="bpm">Tempo (BPM):</label>
+      <input type="number" id="bpm" value="90" min="30" max="300" style="width: 80px;">
+    </div>
+
+    <h3>Lead Sheet</h3>
+    <div id="leadSheetGridContainer"></div>
+  </main>
+
+  <script>
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const SAMPLE_PATH = '/samples/';
+    const loadedSamples = {};
+    const progressions = [];
+    let playbackIndex = -1;
+
+    const genrePatterns = {
+      "Pop": ["I–V–vi–IV", "vi–IV–I–V"],
+      "Rock": ["I–IV–V", "ii–V–I"],
+      "Country": ["I–IV–I–V", "I–vi–IV–V"],
+      "Jazz - Bebop": ["ii7–V7–Imaj7", "iii7–VI7–ii7–V7"],
+      "Jazz - Ballad": ["Imaj7–vi7–ii7–V7"],
+      "Jazz - Hard Bop": ["iim7–V7–Imaj7", "ii7b5–V7alt–i"],
+      "Jazz - Gypsy": ["i–iv–V7", "i–bVII–i"],
+      "Jazz - Modal": ["i–bVII–IV", "i–IImaj7"]
+    };
+
+    function noteToFilename(note) {
+      return note.toLowerCase().replace('#', 's') + '.wav';
+    }
+
+    async function loadSample(note) {
+      const filename = noteToFilename(note);
+      if (loadedSamples[filename]) return loadedSamples[filename];
+      const response = await fetch(SAMPLE_PATH + filename);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      loadedSamples[filename] = audioBuffer;
+      return audioBuffer;
+    }
+
+    async function playNote(note) {
+      const buffer = await loadSample(note);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start();
+    }
+
+    async function playChord(chordName) {
+      const chordNotes = chordToNotes(chordName);
+      if (!chordNotes) return;
+      for (const note of chordNotes) playNote(note);
+    }
+
+    function chordToNotes(chordName) {
+      const voicing = {
+        'C': ['c3', 'e3', 'g3'], 'Cm': ['c3', 'ds3', 'g3'],
+        'D': ['d3', 'fs3', 'a3'], 'Dm': ['d3', 'f3', 'a3'],
+        'E': ['e3', 'gs3', 'b3'], 'F': ['f3', 'a3', 'c4'],
+        'Fm': ['f3', 'gs3', 'c4'], 'G': ['g2', 'b2', 'd3'],
+        'G7': ['g2', 'b2', 'd3', 'f3'], 'Am': ['a2', 'c3', 'e3'],
+        'A7': ['a2', 'cs3', 'e3', 'g3'], 'Bdim': ['b2', 'd3', 'f3'],
+        'Cmaj7': ['c3', 'e3', 'g3', 'b3'], 'Fmaj7': ['f3', 'a3', 'c4', 'e4'],
+        'D7': ['d3', 'fs3', 'a3', 'c4']
+      };
+      return voicing[chordName];
+    }
+
+    function getChordFromRoman(roman, key) {
+      const scale = {
+        C: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+        D: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'],
+        E: ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'],
+        F: ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'],
+        G: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
+        A: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
+        B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'],
+        'C#': ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'],
+        'Eb': ['Eb', 'F', 'G', 'Ab', 'Bb', 'C', 'D'],
+        'Ab': ['Ab', 'Bb', 'C', 'Db', 'Eb', 'F', 'G'],
+        'Bb': ['Bb', 'C', 'D', 'Eb', 'F', 'G', 'A']
+      };
+      const romanToIndex = {
+        'I': 0, 'ii': 1, 'iii': 2, 'IV': 3, 'V': 4, 'vi': 5, 'vii': 6,
+        'i': 0, 'iv': 3, 'v': 4, 'bVII': 6, 'II': 1, 'III': 2, 'bIII': 2, 'bVI': 5, 'ii7b5': 1
+      };
+      const chords = scale[key];
+      const base = roman.replace(/[^A-Za-z]/g, '');
+      const suffix = roman.replace(/[A-Za-z]/g, '');
+      const idx = romanToIndex[base];
+      return chords?.[idx % 7] + suffix;
+    }
+
+    function suggestNextChord() {
+      const key = document.getElementById("key").value;
+      const genre = document.getElementById("genre").value;
+      const pattern = genrePatterns[genre][Math.floor(Math.random() * genrePatterns[genre].length)];
+      const chords = pattern.split('–').map(ch => getChordFromRoman(ch, key));
+      progressions.push(...chords);
+      updateProgressionDisplay();
+      document.getElementById("suggestion-box").innerText = `Using ${pattern} from ${genre}`;
+    }
+
+    function updateProgressionDisplay() {
+      document.getElementById("progression-display").innerText = progressions.join(' | ');
+      updateLeadSheetGrid();
+    }
+
+    function addCustomChords() {
+      const custom = document.getElementById("customChord").value;
+      if (custom) {
+        progressions.push(...custom.split(/\s+/));
+        document.getElementById("customChord").value = '';
+        updateProgressionDisplay();
+        document.getElementById("suggestion-box").innerText = 'Custom chords added.';
+      }
+    }
+
+    function addNewBar() {
+      const newChord = prompt("Enter new chord (e.g. Fmaj7):");
+      if (newChord) {
+        progressions.push(newChord);
+        updateProgressionDisplay();
+      }
+    }
+
+    function insertSection() {
+      const section = prompt("Enter section name (e.g. Chorus):");
+      if (section) {
+        progressions.push(`[${section}]`);
+        updateProgressionDisplay();
+      }
+    }
+
+    async function playProgression() {
+      const bpm = parseInt(document.getElementById('bpm').value);
+      const delay = Math.round((60 / bpm) * 1000);
+
+      for (let i = 0; i < progressions.length; i++) {
+        if (progressions[i].startsWith('[')) continue;
+        playbackIndex = i;
+        updateLeadSheetGrid();
+        await playChord(progressions[i]);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      playbackIndex = -1;
+      updateLeadSheetGrid();
+    }
+
+    function updateLeadSheetGrid() {
+      const container = document.getElementById('leadSheetGridContainer');
+      container.innerHTML = '';
+      const barsPerLine = 4;
+      let row;
+      let barIndex = 0;
+
+      progressions.forEach((item, index) => {
+        if (item.startsWith('[')) {
+          const sectionLabel = document.createElement('div');
+          sectionLabel.textContent = item.replace(/\[|\]/g, '');
+          sectionLabel.style.fontWeight = 'bold';
+          sectionLabel.style.fontSize = '1.2rem';
+          sectionLabel.style.marginTop = '1rem';
+          container.appendChild(sectionLabel);
+          return;
+        }
+
+        if (barIndex % barsPerLine === 0) {
+          row = document.createElement('div');
+          row.style.display = 'grid';
+          row.style.gridTemplateColumns = `repeat(${barsPerLine}, 1fr)`;
+          row.style.gap = '8px';
+          row.style.marginBottom = '0.5rem';
+          container.appendChild(row);
+        }
+
+        const cell = document.createElement('div');
+        cell.textContent = `${barIndex + 1}. ${item}`;
+        cell.setAttribute('draggable', true);
+        cell.style.padding = '1rem';
+        cell.style.border = '1px solid #ccc';
+        cell.style.borderRadius = '6px';
+        cell.style.textAlign = 'center';
+        cell.style.background = (index === playbackIndex) ? '#ffeaa7' : '#fff';
+        cell.style.fontWeight = 'bold';
+        cell.style.fontSize = '1rem';
+        cell.style.cursor = 'pointer';
+
+        cell.onclick = () => {
+          const newChord = prompt(`Edit chord for bar ${barIndex + 1}`, item);
+          if (newChord) {
+            progressions[index] = newChord;
+            updateProgressionDisplay();
+          }
+        };
+
+        cell.ondragstart = (e) => e.dataTransfer.setData('text/plain', index);
+        cell.ondragover = (e) => e.preventDefault();
+        cell.ondrop = (e) => {
+          e.preventDefault();
+          const from = parseInt(e.dataTransfer.getData('text/plain'));
+          const temp = progressions[from];
+          progressions[from] = progressions[index];
+          progressions[index] = temp;
+          updateProgressionDisplay();
+        };
+
+        row.appendChild(cell);
+        barIndex++;
+      });
+    }
+  </script>
+</body>
+</html>
