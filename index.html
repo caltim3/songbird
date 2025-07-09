@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SongBird - Smart Songwriting Assistant</title>
   <style>
     body {
@@ -40,6 +40,37 @@
       margin-top: 1rem;
       font-style: italic;
       color: #666;
+    }
+    #keyboard {
+      display: flex;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    .key {
+      width: 40px;
+      height: 120px;
+      margin: 1px;
+      background: #fff;
+      border: 1px solid #000;
+      box-sizing: border-box;
+      text-align: center;
+      line-height: 120px;
+      font-size: 0.75rem;
+      user-select: none;
+    }
+    .key.sharp {
+      background: #000;
+      color: #fff;
+      width: 30px;
+      height: 80px;
+      margin-left: -15px;
+      margin-right: -15px;
+      z-index: 2;
+      position: relative;
+    }
+    .key.playing {
+      background: yellow !important;
+      color: black !important;
     }
   </style>
 </head>
@@ -89,6 +120,9 @@
 
     <h3>Lead Sheet</h3>
     <div id="leadSheetGridContainer"></div>
+
+    <h3>Virtual Piano</h3>
+    <div id="keyboard"></div>
   </main>
 
   <script>
@@ -116,18 +150,27 @@
     async function loadSample(note) {
       const filename = noteToFilename(note);
       if (loadedSamples[filename]) return loadedSamples[filename];
-      const response = await fetch(SAMPLE_PATH + filename);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      loadedSamples[filename] = audioBuffer;
-      return audioBuffer;
+      try {
+        const response = await fetch(SAMPLE_PATH + filename);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        loadedSamples[filename] = audioBuffer;
+        return audioBuffer;
+      } catch (e) {
+        console.warn(`Missing sample for ${note}`);
+        return null;
+      }
     }
 
     async function playNote(note) {
       const buffer = await loadSample(note);
+      if (!buffer) return;
+      highlightKey(note);
       const source = audioContext.createBufferSource();
+      const gain = audioContext.createGain();
+      gain.gain.value = 0.8;
       source.buffer = buffer;
-      source.connect(audioContext.destination);
+      source.connect(gain).connect(audioContext.destination);
       source.start();
     }
 
@@ -159,15 +202,10 @@
         F: ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'],
         G: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
         A: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
-        B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'],
-        'C#': ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'],
-        'Eb': ['Eb', 'F', 'G', 'Ab', 'Bb', 'C', 'D'],
-        'Ab': ['Ab', 'Bb', 'C', 'Db', 'Eb', 'F', 'G'],
-        'Bb': ['Bb', 'C', 'D', 'Eb', 'F', 'G', 'A']
+        B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#']
       };
       const romanToIndex = {
-        'I': 0, 'ii': 1, 'iii': 2, 'IV': 3, 'V': 4, 'vi': 5, 'vii': 6,
-        'i': 0, 'iv': 3, 'v': 4, 'bVII': 6, 'II': 1, 'III': 2, 'bIII': 2, 'bVI': 5, 'ii7b5': 1
+        'I': 0, 'ii': 1, 'iii': 2, 'IV': 3, 'V': 4, 'vi': 5, 'vii': 6
       };
       const chords = scale[key];
       const base = roman.replace(/[^A-Za-z]/g, '');
@@ -197,7 +235,6 @@
         progressions.push(...custom.split(/\s+/));
         document.getElementById("customChord").value = '';
         updateProgressionDisplay();
-        document.getElementById("suggestion-box").innerText = 'Custom chords added.';
       }
     }
 
@@ -228,6 +265,7 @@
         await playChord(progressions[i]);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
+
       playbackIndex = -1;
       updateLeadSheetGrid();
     }
@@ -294,6 +332,31 @@
         barIndex++;
       });
     }
+
+    function createKeyboard() {
+      const container = document.getElementById('keyboard');
+      const notes = ["c", "cs", "d", "ds", "e", "f", "fs", "g", "gs", "a", "as", "b"];
+      for (let octave = 2; octave <= 5; octave++) {
+        notes.forEach(note => {
+          const key = document.createElement('div');
+          key.className = 'key' + (note.includes('s') ? ' sharp' : '');
+          key.dataset.note = note + octave;
+          key.textContent = note.toUpperCase() + octave;
+          key.onclick = () => playNote(note + octave);
+          container.appendChild(key);
+        });
+      }
+    }
+
+    function highlightKey(note, duration = 300) {
+      const el = document.querySelector(`.key[data-note="${note}"]`);
+      if (el) {
+        el.classList.add('playing');
+        setTimeout(() => el.classList.remove('playing'), duration);
+      }
+    }
+
+    window.onload = createKeyboard;
   </script>
 </body>
 </html>
