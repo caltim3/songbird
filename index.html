@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SongBird - Smart Songwriting Assistant</title>
   <style>
     body {
@@ -132,16 +132,20 @@
     const progressions = [];
     let playbackIndex = -1;
 
-    const genrePatterns = {
-      "Pop": ["I–V–vi–IV", "vi–IV–I–V"],
-      "Rock": ["I–IV–V", "ii–V–I"],
-      "Country": ["I–IV–I–V", "I–vi–IV–V"],
-      "Jazz - Bebop": ["ii7–V7–Imaj7", "iii7–VI7–ii7–V7"],
-      "Jazz - Ballad": ["Imaj7–vi7–ii7–V7"],
-      "Jazz - Hard Bop": ["iim7–V7–Imaj7", "ii7b5–V7alt–i"],
-      "Jazz - Gypsy": ["i–iv–V7", "i–bVII–i"],
-      "Jazz - Modal": ["i–bVII–IV", "i–IImaj7"]
+    const chordVoicings = {
+      'C': ['c3', 'e3', 'g3'], 'Cm': ['c3', 'ds3', 'g3'],
+      'D': ['d3', 'fs3', 'a3'], 'Dm': ['d3', 'f3', 'a3'],
+      'E': ['e3', 'gs3', 'b3'], 'F': ['f3', 'a3', 'c4'],
+      'Fm': ['f3', 'gs3', 'c4'], 'G': ['g2', 'b2', 'd3'],
+      'G7': ['g2', 'b2', 'd3', 'f3'], 'Am': ['a2', 'c3', 'e3'],
+      'A7': ['a2', 'cs3', 'e3', 'g3'], 'Bdim': ['b2', 'd3', 'f3'],
+      'Cmaj7': ['c3', 'e3', 'g3', 'b3'], 'Fmaj7': ['f3', 'a3', 'c4', 'e4'],
+      'D7': ['d3', 'fs3', 'a3', 'c4']
     };
+
+    function chordToNotes(chordName) {
+      return chordVoicings[chordName];
+    }
 
     function noteToFilename(note) {
       return note.toLowerCase().replace('#', 's') + '.wav';
@@ -175,98 +179,68 @@
     }
 
     async function playChord(chordName) {
-      const chordNotes = chordToNotes(chordName);
-      if (!chordNotes) return;
-      for (const note of chordNotes) playNote(note);
+      const notes = chordToNotes(chordName);
+      if (!notes) return;
+      for (const note of notes) playNote(note);
     }
 
-    function chordToNotes(chordName) {
-      const voicing = {
-        'C': ['c3', 'e3', 'g3'], 'Cm': ['c3', 'ds3', 'g3'],
-        'D': ['d3', 'fs3', 'a3'], 'Dm': ['d3', 'f3', 'a3'],
-        'E': ['e3', 'gs3', 'b3'], 'F': ['f3', 'a3', 'c4'],
-        'Fm': ['f3', 'gs3', 'c4'], 'G': ['g2', 'b2', 'd3'],
-        'G7': ['g2', 'b2', 'd3', 'f3'], 'Am': ['a2', 'c3', 'e3'],
-        'A7': ['a2', 'cs3', 'e3', 'g3'], 'Bdim': ['b2', 'd3', 'f3'],
-        'Cmaj7': ['c3', 'e3', 'g3', 'b3'], 'Fmaj7': ['f3', 'a3', 'c4', 'e4'],
-        'D7': ['d3', 'fs3', 'a3', 'c4']
-      };
-      return voicing[chordName];
-    }
-
-    function getChordFromRoman(roman, key) {
-      const scale = {
-        C: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
-        D: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'],
-        E: ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'],
-        F: ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'],
-        G: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
-        A: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
-        B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#']
-      };
-      const romanToIndex = {
-        'I': 0, 'ii': 1, 'iii': 2, 'IV': 3, 'V': 4, 'vi': 5, 'vii': 6
-      };
-      const chords = scale[key];
-      const base = roman.replace(/[^A-Za-z]/g, '');
-      const suffix = roman.replace(/[A-Za-z]/g, '');
-      const idx = romanToIndex[base];
-      return chords?.[idx % 7] + suffix;
-    }
-
-    function suggestNextChord() {
-      const key = document.getElementById("key").value;
-      const genre = document.getElementById("genre").value;
-      const pattern = genrePatterns[genre][Math.floor(Math.random() * genrePatterns[genre].length)];
-      const chords = pattern.split('–').map(ch => getChordFromRoman(ch, key));
-      progressions.push(...chords);
-      updateProgressionDisplay();
-      document.getElementById("suggestion-box").innerText = `Using ${pattern} from ${genre}`;
-    }
-
-    function updateProgressionDisplay() {
-      document.getElementById("progression-display").innerText = progressions.join(' | ');
-      updateLeadSheetGrid();
-    }
-
-    function addCustomChords() {
-      const custom = document.getElementById("customChord").value;
-      if (custom) {
-        progressions.push(...custom.split(/\s+/));
-        document.getElementById("customChord").value = '';
-        updateProgressionDisplay();
+    function playProgression() {
+      const bpm = parseInt(document.getElementById('bpm').value);
+      const delay = Math.round((60 / bpm) * 1000);
+      let i = 0;
+      function next() {
+        while (i < progressions.length && progressions[i].startsWith('[')) {
+          i++;
+        }
+        if (i < progressions.length) {
+          playbackIndex = i;
+          updateLeadSheetGrid();
+          playChord(progressions[i]);
+          i++;
+          setTimeout(next, delay);
+        } else {
+          playbackIndex = -1;
+          updateLeadSheetGrid();
+        }
       }
+      next();
     }
 
     function addNewBar() {
-      const newChord = prompt("Enter new chord (e.g. Fmaj7):");
-      if (newChord) {
-        progressions.push(newChord);
+      const chord = prompt("Enter new chord:");
+      if (chord) {
+        progressions.push(chord);
         updateProgressionDisplay();
       }
     }
 
     function insertSection() {
-      const section = prompt("Enter section name (e.g. Chorus):");
+      const section = prompt("Enter section name:");
       if (section) {
         progressions.push(`[${section}]`);
         updateProgressionDisplay();
       }
     }
 
-    async function playProgression() {
-      const bpm = parseInt(document.getElementById('bpm').value);
-      const delay = Math.round((60 / bpm) * 1000);
-
-      for (let i = 0; i < progressions.length; i++) {
-        if (progressions[i].startsWith('[')) continue;
-        playbackIndex = i;
-        updateLeadSheetGrid();
-        await playChord(progressions[i]);
-        await new Promise(resolve => setTimeout(resolve, delay));
+    function suggestNextChord() {
+      const chord = prompt("Suggest a chord manually for now (until AI logic added):");
+      if (chord) {
+        progressions.push(chord);
+        updateProgressionDisplay();
       }
+    }
 
-      playbackIndex = -1;
+    function addCustomChords() {
+      const input = document.getElementById('customChord').value;
+      if (input) {
+        progressions.push(...input.trim().split(/\s+/));
+        document.getElementById('customChord').value = '';
+        updateProgressionDisplay();
+      }
+    }
+
+    function updateProgressionDisplay() {
+      document.getElementById('progression-display').innerText = progressions.join(' | ');
       updateLeadSheetGrid();
     }
 
