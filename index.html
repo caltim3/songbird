@@ -1,14 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SongBird - Smart Songwriting Assistant</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SongBird - Complete Fixed Version</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tonaljs/tonal/browser/tonal.min.js">
+    function addCustomChords() {
+      const input = document.getElementById('customChord').value;
+      if (input) {
+        progression.push(...input.trim().split(/\s+/));
+        renderProgression();
+        renderVexflow();
+        document.getElementById('customChord').value = '';
+      }
+    }
+
+    function addNewBar() {
+      const chord = prompt("Enter a new chord:");
+      if (chord) {
+        progression.push(chord);
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function insertSection() {
+      const section = prompt("Enter section name (e.g., Chorus, Bridge):");
+      if (section) {
+        progression.push("[" + section + "]");
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function renderProgression() {
+      const display = document.getElementById("progressionDisplay");
+      display.innerHTML = "";
+      progression.forEach((ch, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.textContent = ch;
+        if (ch.startsWith("[")) {
+          div.style.background = "#ddd";
+          div.style.fontWeight = "normal";
+          div.style.fontStyle = "italic";
+        } else {
+          div.setAttribute('draggable', true);
+          div.onclick = () => {
+            const newChord = prompt("Edit chord:", ch);
+            if (newChord) {
+              progression[i] = newChord;
+              renderProgression();
+              renderVexflow();
+            }
+          };
+          div.ondragstart = (e) => e.dataTransfer.setData("text/plain", i);
+          div.ondragover = (e) => e.preventDefault();
+          div.ondrop = (e) => {
+            e.preventDefault();
+            const from = parseInt(e.dataTransfer.getData("text/plain"));
+            const temp = progression[from];
+            progression[from] = progression[i];
+            progression[i] = temp;
+            renderProgression();
+            renderVexflow();
+          };
+        }
+        display.appendChild(div);
+      });
+    }
+    </script>
+  <script src="https://unpkg.com/vexflow/releases/vexflow-min.js">
+    function addCustomChords() {
+      const input = document.getElementById('customChord').value;
+      if (input) {
+        progression.push(...input.trim().split(/\s+/));
+        renderProgression();
+        renderVexflow();
+        document.getElementById('customChord').value = '';
+      }
+    }
+
+    function addNewBar() {
+      const chord = prompt("Enter a new chord:");
+      if (chord) {
+        progression.push(chord);
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function insertSection() {
+      const section = prompt("Enter section name (e.g., Chorus, Bridge):");
+      if (section) {
+        progression.push("[" + section + "]");
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function renderProgression() {
+      const display = document.getElementById("progressionDisplay");
+      display.innerHTML = "";
+      progression.forEach((ch, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.textContent = ch;
+        if (ch.startsWith("[")) {
+          div.style.background = "#ddd";
+          div.style.fontWeight = "normal";
+          div.style.fontStyle = "italic";
+        } else {
+          div.setAttribute('draggable', true);
+          div.onclick = () => {
+            const newChord = prompt("Edit chord:", ch);
+            if (newChord) {
+              progression[i] = newChord;
+              renderProgression();
+              renderVexflow();
+            }
+          };
+          div.ondragstart = (e) => e.dataTransfer.setData("text/plain", i);
+          div.ondragover = (e) => e.preventDefault();
+          div.ondrop = (e) => {
+            e.preventDefault();
+            const from = parseInt(e.dataTransfer.getData("text/plain"));
+            const temp = progression[from];
+            progression[from] = progression[i];
+            progression[i] = temp;
+            renderProgression();
+            renderVexflow();
+          };
+        }
+        display.appendChild(div);
+      });
+    }
+    </script>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f4f4f4;
-      color: #333;
       margin: 0;
       padding: 0;
     }
@@ -19,318 +150,279 @@
       text-align: center;
     }
     main {
-      padding: 2rem;
       max-width: 960px;
       margin: auto;
+      padding: 2rem;
     }
-    select, button, textarea, input[type=number] {
-      font-size: 1rem;
+    select, input, button, textarea {
+      width: 100%;
       padding: 0.5rem;
       margin: 0.5rem 0;
-      width: 100%;
+      font-size: 1rem;
     }
-    .chord-progression {
-      margin: 1rem 0;
-      padding: 1rem;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .suggestion-box {
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
       margin-top: 1rem;
-      font-style: italic;
-      color: #666;
+    }
+    .cell {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      text-align: center;
+      font-weight: bold;
+      border-radius: 6px;
+    }
+    .cell.playing {
+      background: yellow;
     }
     #keyboard {
       display: flex;
-      margin-top: 2rem;
       flex-wrap: wrap;
+      margin-top: 1rem;
     }
     .key {
       width: 40px;
       height: 120px;
       margin: 1px;
-      background: #fff;
       border: 1px solid #000;
       box-sizing: border-box;
       text-align: center;
       line-height: 120px;
-      font-size: 0.75rem;
-      user-select: none;
     }
     .key.sharp {
-      background: #000;
-      color: #fff;
       width: 30px;
       height: 80px;
       margin-left: -15px;
       margin-right: -15px;
-      z-index: 2;
+      background: black;
+      color: white;
+      z-index: 1;
       position: relative;
     }
-    .key.playing {
-      background: yellow !important;
-      color: black !important;
+    canvas {
+      margin-top: 2rem;
     }
   </style>
 </head>
 <body>
   <header>
     <h1>SongBird</h1>
-    <p>Smart songwriting assistant with musical theory tools</p>
+    <p>Smart songwriting assistant with full playback and notation</p>
   </header>
   <main>
-    <label for="key">Choose Key:</label>
+    <label>Key:</label>
     <select id="key">
-      <option>C</option><option>C#</option><option>D</option><option>Eb</option>
-      <option>E</option><option>F</option><option>F#</option><option>G</option>
-      <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+      <option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option>
+      <option>Gb</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
     </select>
 
-    <label for="genre">Choose Genre:</label>
+    <label>Genre:</label>
     <select id="genre">
-      <option>Pop</option><option>Rock</option><option>Country</option>
-      <option>Jazz - Bebop</option><option>Jazz - Ballad</option>
-      <option>Jazz - Hard Bop</option><option>Jazz - Gypsy</option>
-      <option>Jazz - Modal</option>
+      <option>Jazz</option><option>Pop</option><option>Rock</option><option>Country</option>
     </select>
 
-    <button onclick="suggestNextChord()">Suggest Next Chord</button>
-
-    <div class="chord-progression">
-      <h3>Current Progression:</h3>
-      <p id="progression-display">(empty)</p>
-      <div class="suggestion-box" id="suggestion-box"></div>
-    </div>
-
-    <label for="customChord">Add/Modify Chord:</label>
+    
+    <button onclick="generateProgression()">Suggest Progression</button>
     <textarea id="customChord" placeholder="Enter custom chord(s), e.g. Am7 D7 Gmaj7"></textarea>
-    <button onclick="addCustomChords()">Update Progression</button>
+    <button onclick="addCustomChords()">Add Custom Chords</button>
+    <button onclick="addNewBar()">+ Add New Bar</button>
+    <button onclick="insertSection()">+ Add Section Label</button>
+    
 
-    <div style="margin-top: 1rem;">
-      <button onclick="addNewBar()">+ Add New Bar</button>
-      <button onclick="insertSection()">+ Add Section Label</button>
-      <button onclick="playProgression()">▶ Play Progression</button>
-    </div>
+    <div id="progressionDisplay" class="grid"></div>
 
-    <div style="margin-top: 1rem;">
-      <label for="bpm">Tempo (BPM):</label>
-      <input type="number" id="bpm" value="90" min="30" max="300" style="width: 80px;">
-    </div>
+    <label for="bpm">Tempo (BPM):</label>
+    <input type="number" id="bpm" value="90" min="40" max="240"/>
 
-    <h3>Lead Sheet</h3>
-    <div id="leadSheetGridContainer"></div>
+    <button onclick="playProgression()">▶ Play</button>
 
-    <h3>Virtual Piano</h3>
     <div id="keyboard"></div>
+
+    <canvas id="vexflow" width="900" height="140"></canvas>
   </main>
 
   <script>
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const SAMPLE_PATH = '/samples/';
+    const SAMPLE_PATH = "/samples/";
     const loadedSamples = {};
-    const progressions = [];
-    let playbackIndex = -1;
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    let progression = [];
+    let currentIndex = -1;
 
-    const chordVoicings = {
-      'C': ['c3', 'e3', 'g3'], 'Cm': ['c3', 'ds3', 'g3'],
-      'D': ['d3', 'fs3', 'a3'], 'Dm': ['d3', 'f3', 'a3'],
-      'E': ['e3', 'gs3', 'b3'], 'F': ['f3', 'a3', 'c4'],
-      'Fm': ['f3', 'gs3', 'c4'], 'G': ['g2', 'b2', 'd3'],
-      'G7': ['g2', 'b2', 'd3', 'f3'], 'Am': ['a2', 'c3', 'e3'],
-      'A7': ['a2', 'cs3', 'e3', 'g3'], 'Bdim': ['b2', 'd3', 'f3'],
-      'Cmaj7': ['c3', 'e3', 'g3', 'b3'], 'Fmaj7': ['f3', 'a3', 'c4', 'e4'],
-      'D7': ['d3', 'fs3', 'a3', 'c4']
+    const genreProgressions = {
+      Jazz: ["ii7", "V7", "Imaj7"],
+      Pop: ["I", "V", "vi", "IV"],
+      Rock: ["I", "IV", "V"],
+      Country: ["I", "IV", "I", "V"]
     };
 
-    function chordToNotes(chordName) {
-      return chordVoicings[chordName];
-    }
-
-    function noteToFilename(note) {
-      return note.toLowerCase().replace('#', 's') + '.wav';
-    }
-
     async function loadSample(note) {
-      const filename = noteToFilename(note);
-      if (loadedSamples[filename]) return loadedSamples[filename];
-      try {
-        const response = await fetch(SAMPLE_PATH + filename);
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        loadedSamples[filename] = audioBuffer;
-        return audioBuffer;
-      } catch (e) {
-        console.warn(`Missing sample for ${note}`);
-        return null;
-      }
+      const file = SAMPLE_PATH + note.toLowerCase().replace('#', 's') + ".wav";
+      if (loadedSamples[note]) return loadedSamples[note];
+      const res = await fetch(file);
+      const buf = await res.arrayBuffer();
+      const audio = await audioContext.decodeAudioData(buf);
+      loadedSamples[note] = audio;
+      return audio;
     }
 
     async function playNote(note) {
-      const buffer = await loadSample(note);
-      if (!buffer) return;
-      highlightKey(note);
+      const audioBuffer = await loadSample(note);
       const source = audioContext.createBufferSource();
       const gain = audioContext.createGain();
       gain.gain.value = 0.8;
-      source.buffer = buffer;
+      source.buffer = audioBuffer;
       source.connect(gain).connect(audioContext.destination);
       source.start();
+      highlightKey(note);
+    }
+
+    function highlightKey(note) {
+      const el = document.querySelector(`.key[data-note='${note.toLowerCase()}']`);
+      if (el) {
+        el.classList.add("playing");
+        setTimeout(() => el.classList.remove("playing"), 300);
+      }
     }
 
     async function playChord(chordName) {
-      const notes = chordToNotes(chordName);
-      if (!notes) return;
-      for (const note of notes) playNote(note);
+      const notes = Tonal.Chord.get(chordName).notes;
+      const octaveNotes = notes.map(n => Tonal.Note.simplify(n) + "3");
+      for (const n of octaveNotes) playNote(n);
     }
 
-    function playProgression() {
-      const bpm = parseInt(document.getElementById('bpm').value);
-      const delay = Math.round((60 / bpm) * 1000);
-      let i = 0;
-      function next() {
-        while (i < progressions.length && progressions[i].startsWith('[')) {
-          i++;
-        }
-        if (i < progressions.length) {
-          playbackIndex = i;
-          updateLeadSheetGrid();
-          playChord(progressions[i]);
-          i++;
-          setTimeout(next, delay);
-        } else {
-          playbackIndex = -1;
-          updateLeadSheetGrid();
-        }
-      }
-      next();
+    function generateProgression() {
+      const key = document.getElementById("key").value;
+      const genre = document.getElementById("genre").value;
+      const romanProg = genreProgressions[genre];
+      progression = romanProg.map(roman => Tonal.Chord.fromRomanNumeral(key, roman));
+      renderProgression();
+      renderVexflow();
     }
 
-    function addNewBar() {
-      const chord = prompt("Enter new chord:");
-      if (chord) {
-        progressions.push(chord);
-        updateProgressionDisplay();
-      }
-    }
-
-    function insertSection() {
-      const section = prompt("Enter section name:");
-      if (section) {
-        progressions.push(`[${section}]`);
-        updateProgressionDisplay();
-      }
-    }
-
-    function suggestNextChord() {
-      const chord = prompt("Suggest a chord manually for now (until AI logic added):");
-      if (chord) {
-        progressions.push(chord);
-        updateProgressionDisplay();
-      }
-    }
-
-    function addCustomChords() {
-      const input = document.getElementById('customChord').value;
-      if (input) {
-        progressions.push(...input.trim().split(/\s+/));
-        document.getElementById('customChord').value = '';
-        updateProgressionDisplay();
-      }
-    }
-
-    function updateProgressionDisplay() {
-      document.getElementById('progression-display').innerText = progressions.join(' | ');
-      updateLeadSheetGrid();
-    }
-
-    function updateLeadSheetGrid() {
-      const container = document.getElementById('leadSheetGridContainer');
-      container.innerHTML = '';
-      const barsPerLine = 4;
-      let row;
-      let barIndex = 0;
-
-      progressions.forEach((item, index) => {
-        if (item.startsWith('[')) {
-          const sectionLabel = document.createElement('div');
-          sectionLabel.textContent = item.replace(/\[|\]/g, '');
-          sectionLabel.style.fontWeight = 'bold';
-          sectionLabel.style.fontSize = '1.2rem';
-          sectionLabel.style.marginTop = '1rem';
-          container.appendChild(sectionLabel);
-          return;
-        }
-
-        if (barIndex % barsPerLine === 0) {
-          row = document.createElement('div');
-          row.style.display = 'grid';
-          row.style.gridTemplateColumns = `repeat(${barsPerLine}, 1fr)`;
-          row.style.gap = '8px';
-          row.style.marginBottom = '0.5rem';
-          container.appendChild(row);
-        }
-
-        const cell = document.createElement('div');
-        cell.textContent = `${barIndex + 1}. ${item}`;
-        cell.setAttribute('draggable', true);
-        cell.style.padding = '1rem';
-        cell.style.border = '1px solid #ccc';
-        cell.style.borderRadius = '6px';
-        cell.style.textAlign = 'center';
-        cell.style.background = (index === playbackIndex) ? '#ffeaa7' : '#fff';
-        cell.style.fontWeight = 'bold';
-        cell.style.fontSize = '1rem';
-        cell.style.cursor = 'pointer';
-
-        cell.onclick = () => {
-          const newChord = prompt(`Edit chord for bar ${barIndex + 1}`, item);
-          if (newChord) {
-            progressions[index] = newChord;
-            updateProgressionDisplay();
-          }
-        };
-
-        cell.ondragstart = (e) => e.dataTransfer.setData('text/plain', index);
-        cell.ondragover = (e) => e.preventDefault();
-        cell.ondrop = (e) => {
-          e.preventDefault();
-          const from = parseInt(e.dataTransfer.getData('text/plain'));
-          const temp = progressions[from];
-          progressions[from] = progressions[index];
-          progressions[index] = temp;
-          updateProgressionDisplay();
-        };
-
-        row.appendChild(cell);
-        barIndex++;
+    function renderProgression() {
+      const display = document.getElementById("progressionDisplay");
+      display.innerHTML = "";
+      progression.forEach((ch, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.textContent = ch;
+        display.appendChild(div);
       });
     }
 
+    async function playProgression() {
+      const bpm = parseInt(document.getElementById("bpm").value);
+      const msPerChord = (60 / bpm) * 1000;
+      const cells = document.querySelectorAll(".cell");
+
+      for (let i = 0; i < progression.length; i++) {
+        cells.forEach(c => c.classList.remove("playing"));
+        cells[i].classList.add("playing");
+        await playChord(progression[i]);
+        await new Promise(res => setTimeout(res, msPerChord));
+      }
+      cells.forEach(c => c.classList.remove("playing"));
+    }
+
+    function renderVexflow() {
+      const VF = Vex.Flow;
+      const div = document.getElementById("vexflow");
+      const renderer = new VF.Renderer(div, VF.Renderer.Backends.CANVAS);
+      const ctx = renderer.getContext();
+      ctx.clearRect(0, 0, div.width, div.height);
+      const stave = new VF.Stave(10, 40, 880);
+      stave.addClef("treble").setContext(ctx).draw();
+      const notes = progression.map(ch => {
+        const root = Tonal.Chord.get(ch).tonic || "C";
+        return new VF.TextNote({ text: ch, duration: "q" }).setJustification(VF.TextNote.Justification.CENTER);
+      });
+      const voice = new VF.Voice({ num_beats: notes.length, beat_value: 4 }).addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice], 800);
+      voice.draw(ctx, stave);
+    }
+
     function createKeyboard() {
-      const container = document.getElementById('keyboard');
-      const notes = ["c", "cs", "d", "ds", "e", "f", "fs", "g", "gs", "a", "as", "b"];
+      const keys = ["c", "cs", "d", "ds", "e", "f", "fs", "g", "gs", "a", "as", "b"];
+      const container = document.getElementById("keyboard");
       for (let octave = 2; octave <= 5; octave++) {
-        notes.forEach(note => {
-          const key = document.createElement('div');
-          key.className = 'key' + (note.includes('s') ? ' sharp' : '');
-          key.dataset.note = note + octave;
-          key.textContent = note.toUpperCase() + octave;
-          key.onclick = () => playNote(note + octave);
-          container.appendChild(key);
+        keys.forEach(k => {
+          const div = document.createElement("div");
+          div.className = "key" + (k.includes("s") ? " sharp" : "");
+          div.dataset.note = k + octave;
+          div.textContent = k.toUpperCase() + octave;
+          container.appendChild(div);
         });
       }
     }
 
-    function highlightKey(note, duration = 300) {
-      const el = document.querySelector(`.key[data-note="${note}"]`);
-      if (el) {
-        el.classList.add('playing');
-        setTimeout(() => el.classList.remove('playing'), duration);
+    window.onload = createKeyboard;
+  
+    function addCustomChords() {
+      const input = document.getElementById('customChord').value;
+      if (input) {
+        progression.push(...input.trim().split(/\s+/));
+        renderProgression();
+        renderVexflow();
+        document.getElementById('customChord').value = '';
       }
     }
 
-    window.onload = createKeyboard;
-  </script>
+    function addNewBar() {
+      const chord = prompt("Enter a new chord:");
+      if (chord) {
+        progression.push(chord);
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function insertSection() {
+      const section = prompt("Enter section name (e.g., Chorus, Bridge):");
+      if (section) {
+        progression.push("[" + section + "]");
+        renderProgression();
+        renderVexflow();
+      }
+    }
+
+    function renderProgression() {
+      const display = document.getElementById("progressionDisplay");
+      display.innerHTML = "";
+      progression.forEach((ch, i) => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        div.textContent = ch;
+        if (ch.startsWith("[")) {
+          div.style.background = "#ddd";
+          div.style.fontWeight = "normal";
+          div.style.fontStyle = "italic";
+        } else {
+          div.setAttribute('draggable', true);
+          div.onclick = () => {
+            const newChord = prompt("Edit chord:", ch);
+            if (newChord) {
+              progression[i] = newChord;
+              renderProgression();
+              renderVexflow();
+            }
+          };
+          div.ondragstart = (e) => e.dataTransfer.setData("text/plain", i);
+          div.ondragover = (e) => e.preventDefault();
+          div.ondrop = (e) => {
+            e.preventDefault();
+            const from = parseInt(e.dataTransfer.getData("text/plain"));
+            const temp = progression[from];
+            progression[from] = progression[i];
+            progression[i] = temp;
+            renderProgression();
+            renderVexflow();
+          };
+        }
+        display.appendChild(div);
+      });
+    }
+    </script>
 </body>
 </html>
